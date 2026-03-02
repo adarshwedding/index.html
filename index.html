@@ -723,24 +723,28 @@ c.innerHTML+=`
 <div class="event-images" id="${id}-images"></div>
 <div class="thumbnail-bar" id="${id}-thumbs"></div>
 </div>`;
-displayEvent(id);
 });
 }
 
 // CLOUDINARY UPLOAD
 function saveEvent(e,id){
 
+let files = Array.from(e.target.files);
+if(files.length === 0) return;
+
 let savedImages = JSON.parse(localStorage.getItem(id)) || [];
 
-Array.from(e.target.files).forEach(file=>{
+Promise.all(
+
+files.map(file => {
 
 let formData = new FormData();
 formData.append("file", file);
 formData.append("upload_preset", UPLOAD_PRESET);
 formData.append("folder", "wedding");
-formData.append("public_id", id + "_" + Date.now());
+formData.append("public_id", id + "_" + Date.now() + "_" + Math.random());
 
-fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
+return fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
 method:"POST",
 body:formData
 })
@@ -748,12 +752,20 @@ body:formData
 .then(data=>{
 if(data.secure_url){
 savedImages.push(data.secure_url);
+}
+});
+
+})
+
+).then(()=>{
+
 localStorage.setItem(id, JSON.stringify(savedImages));
 displayEvent(id);
-}
-})
-.catch(()=>alert("Upload failed ❌"));
+alert("Images Uploaded Successfully ✅");
 
+})
+.catch(()=>{
+alert("Upload failed ❌");
 });
 
 e.target.value="";
@@ -809,7 +821,6 @@ imgs.splice(index,1);
 
 localStorage.setItem(id, JSON.stringify(imgs));
 
-displayEvent(id);
 
 alert("Image Deleted Successfully ✅");
 }
