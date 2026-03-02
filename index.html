@@ -770,7 +770,6 @@ alert("Upload failed ❌");
 
 e.target.value="";
 }
-// DISPLAY EVENT IMAGES (UPDATED WITH DELETE BUTTON)
 function displayEvent(id){
 
 let imgBox = document.getElementById(id+"-images");
@@ -779,28 +778,46 @@ let thumbBox = document.getElementById(id+"-thumbs");
 imgBox.innerHTML = "";
 thumbBox.innerHTML = "";
 
-let images = JSON.parse(localStorage.getItem(id)) || [];
+// LOAD IMAGES DIRECTLY FROM CLOUDINARY USING TIMESTAMP HACK
+let baseURL = `https://res.cloudinary.com/${CLOUD_NAME}/image/wedding_upload/${id}`;
 
-if(images.length === 0) return;
+let images = [];
 
-/* ===== SHOW ONLY ONE IMAGE WRAPPER ===== */
-imgBox.innerHTML = `
-<div class="image-wrapper">
-    <img src="${images[0]}" class="active">
-    <button class="delete-img" onclick="deleteImage('${id}',0)">✖</button>
-</div>
-`;
+// Try loading first 10 possible images
+for(let i=0;i<10;i++){
+images.push(`${baseURL}_${i}.jpg`);
+}
 
-/* ===== CREATE THUMBNAILS ===== */
 images.forEach((url,i)=>{
 
+let testImg = new Image();
+testImg.src = url;
+
+testImg.onload = function(){
+
+if(imgBox.innerHTML===""){
+imgBox.innerHTML = `
+<div class="image-wrapper">
+<img src="${url}" class="active">
+</div>`;
+}
+
 thumbBox.innerHTML += `
-<img src="${url}" 
-class="${i==0?'active-thumb':''}" 
-onclick="selectImage('${id}',${i})">
+<img src="${url}" onclick="selectCloudImage('${id}','${url}')">
 `;
 
+};
+
 });
+}
+function selectCloudImage(id,url){
+
+let imgBox = document.getElementById(id+"-images");
+
+imgBox.innerHTML = `
+<div class="image-wrapper">
+<img src="${url}" class="active">
+</div>`;
 }
 function deleteImage(id,index){
 
