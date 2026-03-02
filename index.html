@@ -621,7 +621,7 @@ style="background-image:url('https://res.cloudinary.com/djanjoccw/image/upload/v
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
-
+<script src="https://upload-widget.cloudinary.com/global/all.js"></script> 
  <script> 
 const ADMIN_PASSWORD = "adarsh123";
 
@@ -694,11 +694,6 @@ e.target.value="";
 }
 window.onload=function(){
 createEvents();
-
-eventList.forEach(e=>{
-let id=e.replace(/\W/g,"");
-displayEvent(id);
-});
 }
 
 const eventList=[
@@ -712,103 +707,61 @@ let slideIntervals={};
 
 function createEvents(){
 let c=document.getElementById("events");
+
 eventList.forEach(e=>{
 let id=e.replace(/\W/g,"");
+
 c.innerHTML+=`
 <div class="event-card">
 <h3>${e}</h3>
-<input type="file" id="${id}" accept="image/*" multiple onchange="saveEvent(event,'${id}')" style="display:none;">
-<span class="symbol-btn plus" onclick="document.getElementById('${id}').click()">+</span>
-<span class="symbol-btn minus" onclick="clearEvent('${id}')">-</span>
+
+<span class="symbol-btn plus" onclick="openUploader('${id}')">+</span>
+
 <div class="event-images" id="${id}-images"></div>
 <div class="thumbnail-bar" id="${id}-thumbs"></div>
+
 </div>`;
 });
 }
 
-// CLOUDINARY UPLOAD
-function saveEvent(e,id){
+function openUploader(id){
 
-let files = Array.from(e.target.files);
-if(files.length === 0) return;
+cloudinary.openUploadWidget({
+cloudName: CLOUD_NAME,
+uploadPreset: UPLOAD_PRESET,
+multiple: true,
+folder: "wedding/" + id
+},
+function(error,result){
 
-let savedImages = JSON.parse(localStorage.getItem(id)) || [];
+if(!error && result && result.event === "success"){
 
-Promise.all(
+let url = result.info.secure_url;
 
-files.map(file => {
+addImageToEvent(id,url);
 
-let formData = new FormData();
-formData.append("file", file);
-formData.append("upload_preset", UPLOAD_PRESET);
-formData.append("folder", "wedding");
-formData.append("public_id", id + "_" + Date.now() + "_" + Math.random());
-
-return fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
-method:"POST",
-body:formData
-})
-.then(res=>res.json())
-.then(data=>{
-if(data.secure_url){
-savedImages.push(data.secure_url);
 }
+
 });
 
-})
-
-).then(()=>{
-
-localStorage.setItem(id, JSON.stringify(savedImages));
-displayEvent(id);
-alert("Images Uploaded Successfully ✅");
-
-})
-.catch(()=>{
-alert("Upload failed ❌");
-});
-
-e.target.value="";
 }
-function displayEvent(id){
+function addImageToEvent(id,url){
 
 let imgBox = document.getElementById(id+"-images");
 let thumbBox = document.getElementById(id+"-thumbs");
 
-imgBox.innerHTML = "";
-thumbBox.innerHTML = "";
-
-// LOAD IMAGES DIRECTLY FROM CLOUDINARY USING TIMESTAMP HACK
-let baseURL = `https://res.cloudinary.com/${CLOUD_NAME}/image/wedding_upload/${id}`;
-
-let images = [];
-
-// Try loading first 10 possible images
-for(let i=0;i<10;i++){
-images.push(`${baseURL}_${i}.jpg`);
-}
-
-images.forEach((url,i)=>{
-
-let testImg = new Image();
-testImg.src = url;
-
-testImg.onload = function(){
-
-if(imgBox.innerHTML===""){
+// If first image
+if(imgBox.innerHTML === ""){
 imgBox.innerHTML = `
 <div class="image-wrapper">
 <img src="${url}" class="active">
 </div>`;
 }
 
+// Add thumbnail
 thumbBox.innerHTML += `
 <img src="${url}" onclick="selectCloudImage('${id}','${url}')">
 `;
-
-};
-
-});
 }
 function selectCloudImage(id,url){
 
@@ -819,46 +772,46 @@ imgBox.innerHTML = `
 <img src="${url}" class="active">
 </div>`;
 }
-function deleteImage(id,index){
-
-let pass = prompt("Enter Admin Password to Delete:");
-
-if(pass !== ADMIN_PASSWORD){
-alert("❌ Wrong Password");
-return;
-}
-
-if(!confirm("⚠ Are you sure you want to permanently delete this image?")){
-return;
-}
-
-let imgs = JSON.parse(localStorage.getItem(id)) || [];
-
-imgs.splice(index,1);
-
-localStorage.setItem(id, JSON.stringify(imgs));
 
 
-alert("Image Deleted Successfully ✅");
-}
-function selectImage(id,index){
+function displayEvent(id){
 
 let imgBox = document.getElementById(id+"-images");
 let thumbBox = document.getElementById(id+"-thumbs");
-let images = JSON.parse(localStorage.getItem(id)) || [];
 
-if(images.length === 0) return;
+imgBox.innerHTML = "";
+thumbBox.innerHTML = "";
 
+// Fetch images from Cloudinary folder
+fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding/${id}.json`)
+.then(res => res.json())
+.then(data => {
+
+if(!data.resources || data.resources.length === 0) return;
+
+data.resources.forEach((img,index)=>{
+
+let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}.${img.format}`;
+
+// Main Image
+if(index === 0){
 imgBox.innerHTML = `
 <div class="image-wrapper">
-    <img src="${images[index]}" class="active">
-    <button class="delete-img" onclick="deleteImage('${id}',${index})">✖</button>
-</div>
+<img src="${url}" class="active">
+</div>`;
+}
+
+// Thumbnails
+thumbBox.innerHTML += `
+<img src="${url}" onclick="selectCloudImage('${id}','${url}')">
 `;
 
-let thumbs = thumbBox.querySelectorAll("img");
-thumbs.forEach(t=>t.classList.remove("active-thumb"));
-thumbs[index].classList.add("active-thumb");
+});
+
+})
+.catch(err=>{
+console.log("Folder empty or listing disabled", err);
+});
 }
 
 // QR & WISH SECTION (UNCHANGED)
