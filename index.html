@@ -377,11 +377,26 @@ gap:8px;
 padding:10px;
 }
 }
+/* ===== FIXED ROYAL BOTTOM BACKGROUND ===== */
+.bottom-bg{
+position:fixed;
+bottom:0;
+left:0;
+width:100%;
+height:280px;   /* adjust height if needed */
+background-image:url("https://res.cloudinary.com/djanjoccw/image/upload/v1772294738/wedding_backgrounds/hero_bottom.jpg");
+background-size:cover;
+background-position:center bottom;
+background-repeat:no-repeat;
+z-index:-1;
+pointer-events:none;
+}
 </style>
 </head>
 <button id="modeToggle" onclick="toggleMode()">
   <span id="toggleIcon">🌙</span>
 </button>
+<div class="bottom-bg"></div>
 <body>
 
   <audio id="bgMusic" autoplay loop>
