@@ -295,7 +295,7 @@ width:10px;
 height:10px;
 border-radius:50%;
 border:3px solid gold;
-cursor:circle;
+cursor:pointer;
 font-size:28px;
 background:radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
 box-shadow:0 0 25px gold, 0 0 50px gold inset;
@@ -703,7 +703,6 @@ const eventList=[
 "28/04/2026 Wedding"
 ];
 
-let slideIntervals={};
 
 function createEvents(){
 let c=document.getElementById("events");
@@ -771,47 +770,6 @@ imgBox.innerHTML = `
 <div class="image-wrapper">
 <img src="${url}" class="active">
 </div>`;
-}
-
-
-function displayEvent(id){
-
-let imgBox = document.getElementById(id+"-images");
-let thumbBox = document.getElementById(id+"-thumbs");
-
-imgBox.innerHTML = "";
-thumbBox.innerHTML = "";
-
-// Fetch images from Cloudinary folder
-fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding/${id}.json`)
-.then(res => res.json())
-.then(data => {
-
-if(!data.resources || data.resources.length === 0) return;
-
-data.resources.forEach((img,index)=>{
-
-let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}.${img.format}`;
-
-// Main Image
-if(index === 0){
-imgBox.innerHTML = `
-<div class="image-wrapper">
-<img src="${url}" class="active">
-</div>`;
-}
-
-// Thumbnails
-thumbBox.innerHTML += `
-<img src="${url}" onclick="selectCloudImage('${id}','${url}')">
-`;
-
-});
-
-})
-.catch(err=>{
-console.log("Folder empty or listing disabled", err);
-});
 }
 
 // QR & WISH SECTION (UNCHANGED)
