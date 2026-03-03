@@ -295,7 +295,7 @@ width:10px;
 height:10px;
 border-radius:50%;
 border:3px solid gold;
-cursor:pointer;
+cursor:circle;
 font-size:28px;
 background:radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
 box-shadow:0 0 25px gold, 0 0 50px gold inset;
@@ -621,7 +621,7 @@ style="background-image:url('https://res.cloudinary.com/djanjoccw/image/upload/v
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
-<script src="https://upload-widget.cloudinary.com/global/all.js"></script> 
+
  <script> 
 const ADMIN_PASSWORD = "adarsh123";
 
@@ -694,6 +694,11 @@ e.target.value="";
 }
 window.onload=function(){
 createEvents();
+
+eventList.forEach(e=>{
+let id=e.replace(/\W/g,"");
+displayEvent(id);
+});
 }
 
 const eventList=[
@@ -703,122 +708,96 @@ const eventList=[
 "28/04/2026 Wedding"
 ];
 
+let slideIntervals={};
 
 function createEvents(){
-
-let c = document.getElementById("events");
-
-let eventList = ["haldi","mehendi","wedding"];
-
-eventList.forEach(id=>{
-
+let c=document.getElementById("events");
+eventList.forEach(e=>{
+let id=e.replace(/\W/g,"");
 c.innerHTML+=`
-<div class="event-box">
-   <div id="${id}-images"></div>
-   <div id="${id}-thumbs"></div>
-   <button onclick="openUploader('${id}')">Upload</button>
-</div>
-`;
-
+<div class="event-card">
+<h3>${e}</h3>
+<input type="file" id="${id}" accept="image/*" multiple onchange="saveEvent(event,'${id}')" style="display:none;">
+<span class="symbol-btn plus" onclick="document.getElementById('${id}').click()">+</span>
+<span class="symbol-btn minus" onclick="clearEvent('${id}')">-</span>
+<div class="event-images" id="${id}-images"></div>
+<div class="thumbnail-bar" id="${id}-thumbs"></div>
+</div>`;
 });
 }
 
-function openUploader(id){
+// CLOUDINARY UPLOAD
+function saveEvent(e,id){
 
-cloudinary.openUploadWidget({
-cloudName: CLOUD_NAME,
-uploadPreset: UPLOAD_PRESET,
-multiple: true,
-folder: "wedding/" + id
-},
-function(error,result){
+let files = Array.from(e.target.files);
+if(files.length === 0) return;
 
-if(!error && result && result.event === "success"){
+Promise.all(
 
-let url = result.info.secure_url;
-let publicId = result.info.public_id;
+files.map(file => {
 
-addImageToEvent(id,url,publicId);
+let formData = new FormData();
+formData.append("file", file);
+formData.append("upload_preset", UPLOAD_PRESET);
+formData.append("folder", "wedding/" + id);
 
-}
+return fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
+method:"POST",
+body:formData
+})
+.then(res=>res.json());
 
+})
+
+).then(()=>{
+displayEvent(id);
+alert("Images Uploaded Successfully ✅");
+})
+.catch(()=>{
+alert("Upload failed ❌");
 });
 
+e.target.value="";
 }
-function addImageToEvent(id, url, publicId){
+function displayEvent(id){
 
 let imgBox = document.getElementById(id+"-images");
 let thumbBox = document.getElementById(id+"-thumbs");
 
-imgBox.innerHTML = `
-<div class="image-wrapper">
-<img src="${url}" class="active">
-<button class="delete-img" onclick="deleteCloudImage('${id}','${publicId}')">✖</button>
-</div>`;
+imgBox.innerHTML = "";
+thumbBox.innerHTML = "";
 
-thumbBox.innerHTML += `
-<img src="${url}" onclick="selectCloudImage('${id}','${url}','${publicId}')">
-`;
-}
-function selectCloudImage(id,url,publicId){
-
-let imgBox = document.getElementById(id+"-images");
-
-imgBox.innerHTML = `
-<div class="image-wrapper">
-<img src="${url}" class="active">
-<button class="delete-img" onclick="deleteCloudImage('${id}','${publicId}')">✖</button>
-</div>`;
-}
-function deleteCloudImage(id, publicId){
-
-if(!confirm("Delete this image permanently?")) return;
-
-fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/delete_by_token`,{
-method:"POST"
-})
-.catch(()=>alert("Manual delete required from Cloudinary dashboard"));
-
-alert("Image removed from view. For full delete, remove from Cloudinary dashboard.");
-
-document.getElementById(id+"-images").innerHTML="";
-}
-function createEvents(){
-
-let c = document.getElementById("events");
-
-let eventList = ["haldi","mehendi","wedding"];
-
-eventList.forEach(id=>{
-
-c.innerHTML+=`
-<div class="event-box">
-   <div id="${id}-images"></div>
-   <div id="${id}-thumbs"></div>
-   <button onclick="openUploader('${id}')">Upload</button>
-</div>
-`;
-
-loadEventImages(id);   // 👈 THIS LINE IS NEW
-
-});
-}
-
+// Fetch images from Cloudinary folder
 fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding/${id}.json`)
-.then(res=>res.json())
-.then(data=>{
+.then(res => res.json())
+.then(data => {
 
-if(!data.resources) return;
+if(!data.resources || data.resources.length === 0) return;
 
-data.resources.forEach(img=>{
-let url = img.secure_url;
-let publicId = img.public_id;
+data.resources.forEach((img,index)=>{
 
-addImageToEvent(id,url,publicId);
+let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}.${img.format}`;
+
+// Main Image
+if(index === 0){
+imgBox.innerHTML = `
+<div class="image-wrapper">
+<img src="${url}" class="active">
+</div>`;
+}
+
+// Thumbnails
+thumbBox.innerHTML += `
+<img src="${url}" onclick="selectCloudImage('${id}','${url}')">
+`;
+
 });
 
 })
-.catch(()=>{});
+.catch(err=>{
+console.log("Folder empty or listing disabled", err);
+});
+}
 
 // QR & WISH SECTION (UNCHANGED)
 const numbers = ["918860690647","917439165782"];
@@ -940,5 +919,6 @@ document.getElementById("bottomBg").style.backgroundImage =
 }
 
 });
+
 
 </script>
