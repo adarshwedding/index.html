@@ -705,21 +705,21 @@ const eventList=[
 
 
 function createEvents(){
-let c=document.getElementById("events");
 
-eventList.forEach(e=>{
-let id=e.replace(/\W/g,"");
+let c = document.getElementById("events");
+
+let eventList = ["haldi","mehendi","wedding"];
+
+eventList.forEach(id=>{
 
 c.innerHTML+=`
-<div class="event-card">
-<h3>${e}</h3>
+<div class="event-box">
+   <div id="${id}-images"></div>
+   <div id="${id}-thumbs"></div>
+   <button onclick="openUploader('${id}')">Upload</button>
+</div>
+`;
 
-<span class="symbol-btn plus" onclick="openUploader('${id}')">+</span>
-
-<div class="event-images" id="${id}-images"></div>
-<div class="thumbnail-bar" id="${id}-thumbs"></div>
-
-</div>`;
 });
 }
 
@@ -736,41 +736,89 @@ function(error,result){
 if(!error && result && result.event === "success"){
 
 let url = result.info.secure_url;
+let publicId = result.info.public_id;
 
-addImageToEvent(id,url);
+addImageToEvent(id,url,publicId);
 
 }
 
 });
 
 }
-function addImageToEvent(id,url){
+function addImageToEvent(id, url, publicId){
 
 let imgBox = document.getElementById(id+"-images");
 let thumbBox = document.getElementById(id+"-thumbs");
 
-// If first image
-if(imgBox.innerHTML === ""){
 imgBox.innerHTML = `
 <div class="image-wrapper">
 <img src="${url}" class="active">
+<button class="delete-img" onclick="deleteCloudImage('${id}','${publicId}')">✖</button>
 </div>`;
-}
 
-// Add thumbnail
 thumbBox.innerHTML += `
-<img src="${url}" onclick="selectCloudImage('${id}','${url}')">
+<img src="${url}" onclick="selectCloudImage('${id}','${url}','${publicId}')">
 `;
 }
-function selectCloudImage(id,url){
+function selectCloudImage(id,url,publicId){
 
 let imgBox = document.getElementById(id+"-images");
 
 imgBox.innerHTML = `
 <div class="image-wrapper">
 <img src="${url}" class="active">
+<button class="delete-img" onclick="deleteCloudImage('${id}','${publicId}')">✖</button>
 </div>`;
 }
+function deleteCloudImage(id, publicId){
+
+if(!confirm("Delete this image permanently?")) return;
+
+fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/delete_by_token`,{
+method:"POST"
+})
+.catch(()=>alert("Manual delete required from Cloudinary dashboard"));
+
+alert("Image removed from view. For full delete, remove from Cloudinary dashboard.");
+
+document.getElementById(id+"-images").innerHTML="";
+}
+function createEvents(){
+
+let c = document.getElementById("events");
+
+let eventList = ["haldi","mehendi","wedding"];
+
+eventList.forEach(id=>{
+
+c.innerHTML+=`
+<div class="event-box">
+   <div id="${id}-images"></div>
+   <div id="${id}-thumbs"></div>
+   <button onclick="openUploader('${id}')">Upload</button>
+</div>
+`;
+
+loadEventImages(id);   // 👈 THIS LINE IS NEW
+
+});
+}
+
+fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding/${id}.json`)
+.then(res=>res.json())
+.then(data=>{
+
+if(!data.resources) return;
+
+data.resources.forEach(img=>{
+let url = img.secure_url;
+let publicId = img.public_id;
+
+addImageToEvent(id,url,publicId);
+});
+
+})
+.catch(()=>{});
 
 // QR & WISH SECTION (UNCHANGED)
 const numbers = ["918860690647","917439165782"];
