@@ -755,7 +755,7 @@ t.classList.remove("active-thumb");
 
 // CLOUDINARY UPLOAD
 function saveEvent(e,id){
-
+                        
 let files = Array.from(e.target.files);
 if(files.length === 0) return;
 
@@ -794,27 +794,22 @@ let thumbBox = document.getElementById(id+"-thumbs");
 imgBox.innerHTML="";
 thumbBox.innerHTML="";
 
-fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding_events/${id}.json`)
-.then(res=>{
-if(!res.ok) return;
-return res.json();
-})
-.then(data=>{
+fetch(`https://wedding-backend-wheat-delta.vercel.app/api/getImages?folder=wedding_events/${id}`)
+.then(res => res.json())
+.then(data => {
 
-if(!data || !data.resources) return;
+if(!data || data.length === 0) return;
 
-data.resources.forEach((img,index)=>{
+data.forEach((url,index)=>{
 
-let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}.${img.format}`;
-
-if(index===0){
-imgBox.innerHTML=`
+if(index === 0){
+imgBox.innerHTML = `
 <div class="image-wrapper">
 <img src="${url}" class="active">
 </div>`;
 }
 
-thumbBox.innerHTML+=`
+thumbBox.innerHTML += `
 <img src="${url}" onclick="selectCloudImage('${id}','${url}')">
 `;
 
