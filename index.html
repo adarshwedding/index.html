@@ -653,7 +653,6 @@ body:formData
 .then(res=>res.json())
 .then(data=>{
 if(data.secure_url){
-localStorage.setItem("heroTopPermanent", data.secure_url);
 document.getElementById("heroBg").style.backgroundImage =
 "url('" + data.secure_url + "')";
 alert("Top Background Updated Permanently ✅");
@@ -682,7 +681,7 @@ body:formData
 .then(res=>res.json())
 .then(data=>{
 if(data.secure_url){
-localStorage.setItem("heroBottomPermanent", data.secure_url);
+
 document.getElementById("bottomBg").style.backgroundImage =
 "url('" + data.secure_url + "')";
 alert("Bottom Background Updated Permanently ✅");
@@ -692,15 +691,38 @@ alert("Bottom Background Updated Permanently ✅");
 
 e.target.value="";
 }
-window.onload=function(){
-createEvents();
+function createEvents(){
+
+let c = document.getElementById("events");
+c.innerHTML = "";   // clear first
 
 eventList.forEach(e=>{
-let id=e.replace(/\W/g,"");
-displayEvent(id);
+
+let id = e.replace(/\W/g,"");
+
+c.innerHTML+=`
+<div class="event-card">
+<h3>${e}</h3>
+
+<input type="file" id="${id}" accept="image/*" multiple 
+onchange="saveEvent(event,'${id}')" style="display:none;">
+
+<span class="symbol-btn plus" 
+onclick="document.getElementById('${id}').click()">+</span>
+
+<span class="symbol-btn minus" 
+onclick="clearEvent('${id}')">-</span>
+
+<div class="event-images" id="${id}-images"></div>
+<div class="thumbnail-bar" id="${id}-thumbs"></div>
+
+</div>
+`;
+
+loadEventImages(id);   // 👈 THIS LOADS CLOUDINARY IMAGES
+
 });
 }
-
 const eventList=[
 "21/04/2026 Haldi Kutai",
 "26/04/2026 Tilak",
@@ -710,20 +732,25 @@ const eventList=[
 
 let slideIntervals={};
 
-function createEvents(){
-let c=document.getElementById("events");
-eventList.forEach(e=>{
-let id=e.replace(/\W/g,"");
-c.innerHTML+=`
-<div class="event-card">
-<h3>${e}</h3>
-<input type="file" id="${id}" accept="image/*" multiple onchange="saveEvent(event,'${id}')" style="display:none;">
-<span class="symbol-btn plus" onclick="document.getElementById('${id}').click()">+</span>
-<span class="symbol-btn minus" onclick="clearEvent('${id}')">-</span>
-<div class="event-images" id="${id}-images"></div>
-<div class="thumbnail-bar" id="${id}-thumbs"></div>
+function selectCloudImage(id, url){
+
+let imgBox = document.getElementById(id+"-images");
+let thumbs = document.querySelectorAll("#"+id+"-thumbs img");
+
+imgBox.innerHTML = `
+<div class="image-wrapper">
+<img src="${url}" class="active">
 </div>`;
+
+// highlight active thumbnail
+thumbs.forEach(t => {
+if(t.src === url){
+t.classList.add("active-thumb");
+}else{
+t.classList.remove("active-thumb");
+}
 });
+
 }
 
 // CLOUDINARY UPLOAD
@@ -739,7 +766,7 @@ files.map(file => {
 let formData = new FormData();
 formData.append("file", file);
 formData.append("upload_preset", UPLOAD_PRESET);
-formData.append("folder", "wedding/" + id);
+formData.append("folder", "wedding_events/" + id);
 
 return fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
 method:"POST",
@@ -750,55 +777,56 @@ body:formData
 })
 
 ).then(()=>{
-displayEvent(id);
+loadEventImages(id);
 alert("Images Uploaded Successfully ✅");
 })
 .catch(()=>{
-alert("Upload failed ❌");
+alert("Upload Failed ❌");
 });
 
 e.target.value="";
 }
-function displayEvent(id){
+function loadEventImages(id){
 
 let imgBox = document.getElementById(id+"-images");
 let thumbBox = document.getElementById(id+"-thumbs");
 
-imgBox.innerHTML = "";
-thumbBox.innerHTML = "";
+imgBox.innerHTML="";
+thumbBox.innerHTML="";
 
-// Fetch images from Cloudinary folder
-fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding/${id}.json`)
-.then(res => res.json())
-.then(data => {
+fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding_events/${id}.json`)
+.then(res=>{
+if(!res.ok) return;
+return res.json();
+})
+.then(data=>{
 
-if(!data.resources || data.resources.length === 0) return;
+if(!data || !data.resources) return;
 
 data.resources.forEach((img,index)=>{
 
 let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}.${img.format}`;
 
-// Main Image
-if(index === 0){
-imgBox.innerHTML = `
+if(index===0){
+imgBox.innerHTML=`
 <div class="image-wrapper">
 <img src="${url}" class="active">
 </div>`;
 }
 
-// Thumbnails
-thumbBox.innerHTML += `
+thumbBox.innerHTML+=`
 <img src="${url}" onclick="selectCloudImage('${id}','${url}')">
 `;
 
 });
 
 })
-.catch(err=>{
-console.log("Folder empty or listing disabled", err);
-});
+.catch(()=>{});
 }
 
+window.addEventListener("load", function(){
+createEvents();
+});
 // QR & WISH SECTION (UNCHANGED)
 const numbers = ["918860690647","917439165782"];
 const qr = new QRious({
@@ -841,7 +869,7 @@ updateQRCode();
 
 function displayWishes(){
 let w=JSON.parse(localStorage.getItem("wishes"))||[];
-wishList.innerHTML="";
+document.getElementById("wishList").innerHTML="";
 w.forEach((x,i)=>{
 wishList.innerHTML+=`<div class="wish"><b>${x.name}</b><br>${x.message}<button class="deleteWish" onclick="confirmDelete(${i})">Delete</button></div>`;
 });
@@ -905,20 +933,12 @@ icon.innerHTML="🌙";
 // Load Permanent Backgrounds
 window.addEventListener("load",function(){
 
-let topBg = localStorage.getItem("heroTopPermanent");
-let bottomBg = localStorage.getItem("heroBottomPermanent");
-
-if(topBg){
 document.getElementById("heroBg").style.backgroundImage =
-"url('" + topBg + "')";
-}
+"url('https://res.cloudinary.com/djanjoccw/image/upload/wedding_backgrounds/hero_top.png')";
 
-if(bottomBg){
 document.getElementById("bottomBg").style.backgroundImage =
-"url('" + bottomBg + "')";
-}
+"url('https://res.cloudinary.com/djanjoccw/image/upload/wedding_backgrounds/hero_bottom.jpg')";
 
 });
-
 
 </script>
