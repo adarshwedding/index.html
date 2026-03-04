@@ -765,7 +765,7 @@ files.map(file => {
 
 let formData = new FormData();
 formData.append("file", file);
-formData.append("upload_preset", UPLOAD_PRESET);
+formData.append("upload_preset", UPLOAD_PRESET);   // ⭐ REQUIRED
 formData.append("folder", "wedding_events/" + id);
 
 return fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{
@@ -776,11 +776,15 @@ body:formData
 
 })
 
-).then(()=>{
+).then((results)=>{
+
+console.log("Upload results:", results);
 loadEventImages(id);
 alert("Images Uploaded Successfully ✅");
+
 })
-.catch(()=>{
+.catch((err)=>{
+console.error("Upload error:", err);
 alert("Upload Failed ❌");
 });
 
@@ -794,22 +798,27 @@ let thumbBox = document.getElementById(id+"-thumbs");
 imgBox.innerHTML="";
 thumbBox.innerHTML="";
 
-fetch(`https://wedding-backend-wheat-delta.vercel.app/api/getImages?folder=wedding_events/${id}`)
-.then(res => res.json())
-.then(data => {
+fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/wedding_events/${id}.json`)
+.then(res=>{
+if(!res.ok) return;
+return res.json();
+})
+.then(data=>{
 
-if(!data || data.length === 0) return;
+if(!data || !data.resources) return;
 
-data.forEach((url,index)=>{
+data.resources.forEach((img,index)=>{
 
-if(index === 0){
-imgBox.innerHTML = `
+let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}.${img.format}`;
+
+if(index===0){
+imgBox.innerHTML=`
 <div class="image-wrapper">
 <img src="${url}" class="active">
 </div>`;
 }
 
-thumbBox.innerHTML += `
+thumbBox.innerHTML+=`
 <img src="${url}" onclick="selectCloudImage('${id}','${url}')">
 `;
 
